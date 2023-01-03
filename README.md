@@ -22,8 +22,8 @@ Let's do some experiments around SMOTE.
 
 First, import the dataset. Here I am using a _**Wine Quality**_, and you can access the dataset using this link. Let's load the dataset and plot the class distribution.
 
-```python
 
+```python
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -49,15 +49,18 @@ plt.ylabel("Distribution %")
 plt.yticks(list(np.linspace(0,1,11)))
 plt.grid(True)
 plt.show()
+```
 
-````
 
-![image.png](attachment:1daf9bd9-881d-4d7d-8fc9-5f69a39d38c3.png)
+    
+![png](images/output_4_0.png)
+    
+
 
 Now we can use the imblearn library to perform SMOTE on our dataset. In the below code, we will do SMOTE on our dataset and plot both the original and resamples versions of the dataset.
 
-```python
 
+```python
 #keep holdout dataset for evaluation purpose
 df,df_holdout = model_selection.train_test_split(df,stratify=df['target'])
 
@@ -100,7 +103,15 @@ ax2.set_title(f'Resampled Data\nClass Ratio: {resampled_class_ratio[1] * 100:.0f
 plt.show()
 ```
 
-![download.png](attachment:6cadcab6-adeb-483e-88af-74f6eea669c2.png)
+    findfont: Font family ['Verdana'] not found. Falling back to DejaVu Sans.
+    findfont: Font family ['Verdana'] not found. Falling back to DejaVu Sans.
+
+
+
+    
+![png](images/output_6_1.png)
+    
+
 
 As you can see in the plots, we have converted 220 original minor incidents into 2152, its ~9x increase. That's where the problem lies. Let's focus on our specific churn problem.
 
@@ -115,8 +126,8 @@ If it's a churn or fraud detection problem, I will not deploy it on production. 
 
 Let's build a classifier using oversampled data and evaluate the model.
 
-```python
 
+```python
 import pandas as pd
 import xgboost as xgb
 import matplotlib.pyplot as plt
@@ -178,7 +189,14 @@ model.fit(X_resampled,y_resampled)
 plot_confusion_matrix_and_roc(model,df_holdout)
 ```
 
-![download.png](attachment:ecd116d3-cd56-428b-b4ed-653070e03ace.png)
+    [11:38:24] WARNING: ../src/learner.cc:1115: Starting in XGBoost 1.3.0, the default evaluation metric used with the objective 'binary:logistic' was changed from 'error' to 'logloss'. Explicitly set eval_metric if you'd like to restore the old behavior.
+
+
+
+    
+![png](images/output_8_1.png)
+    
+
 
 Now it's time to experiment with other approaches for class imbalance. Below I have explained a few methods I have used to tackle imbalance problems.
 
@@ -217,14 +235,15 @@ To incorporate class weights into this loss function, we can modify it as follow
 
 
 $$
-\text{loss}(y, y_{pred}) = -(y * \text{class_weights}[1] * \log(y_{pred}) + (1 - y) * \text{class_weights}[0] * \log(1 - y_{pred}))
+\text{loss}(y, ypred) = -(y * \text{class_weights}[1] * \log(ypred) + (1 - y) * \text{class_weights}[0] * \log(1 - ypred))
 $$
 
 Now, when the model is trained, the loss for each example will be multiplied by the class weight for its class. It will cause the model to pay more attention to the minority class since its samples will significantly impact the loss function.
 
 In most major machine learning model accept sample_weight parameter. Here is an example how you can do this with XGBoost library.
 
-``` python
+
+```python
 # this will compute sample weight for us
 from sklearn.utils import compute_sample_weight
 
@@ -237,13 +256,40 @@ model = XGBClassifier()
 model.fit(X,y,sample_weight=sample_weights)
 ```
 
+    [11:40:26] WARNING: ../src/learner.cc:1115: Starting in XGBoost 1.3.0, the default evaluation metric used with the objective 'binary:logistic' was changed from 'error' to 'logloss'. Explicitly set eval_metric if you'd like to restore the old behavior.
+
+
+
+
+
+    XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1,
+                  colsample_bynode=1, colsample_bytree=1, enable_categorical=False,
+                  gamma=0, gpu_id=-1, importance_type=None,
+                  interaction_constraints='', learning_rate=0.300000012,
+                  max_delta_step=0, max_depth=6, min_child_weight=1, missing=nan,
+                  monotone_constraints='()', n_estimators=100, n_jobs=4,
+                  num_parallel_tree=1, predictor='auto', random_state=0,
+                  reg_alpha=0, reg_lambda=1, scale_pos_weight=1, subsample=1,
+                  tree_method='exact', validate_parameters=1, verbosity=None)
+
+
+
 One thing to notice here is that sample weights can potentially lead to overfitting if the weights are too high. It's generally a good idea to try a range of weights and see which gives the best performance on the validation set.
 
 Alternatively, we can use the scale_pos_weight parameter in XGBoost as well. It will give you similar results.
 
 Let's quickly plot the above model performance.
 
-![download.png](attachment:7f412293-55b5-4e6a-9db2-ec4e9dc7fe2f.png)
+
+```python
+plot_confusion_matrix_and_roc(model,df_holdout)
+```
+
+
+    
+![png](images/output_14_0.png)
+    
+
 
 If you check the confusion matrix for the above two scenarios. In that case, you will notice high false positives in the oversampled scenario. We have fewer false positive predictions using class weights. It also reduced our true positives as well. So we have to tweak our approaches based on real business needs.
 
